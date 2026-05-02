@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model StravaConnection {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  athleteId    Int      @unique
+  accessToken  String
+  refreshToken String
+  expiresAt    Int
+  scope        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model StravaEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  activityId Int
+  createdAt  DateTime @default(now())
+  processed  Boolean  @default(false)
+
+  @@unique([userId, activityId])
+  @@index([processed])
+}
+
+model Activity {
+  id                String   @id @default(cuid())
+  userId            String
+  stravaActivityId  Int
+  distance          Float?
+  moving_time       Int
+  elapsed_time      Int
+  average_heartrate Float?
+  max_heartrate     Float?
+  raw_streams       Json
+  startedAt         DateTime
+  load_score        Float?
+  features_json     Json?
+
+  @@unique([userId, stravaActivityId])
+  @@index([userId, startedAt])
+}
