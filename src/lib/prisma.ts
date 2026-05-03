@@ -1,43 +1,65 @@
-import path from "node:path";
-
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { Pool } from "pg";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+  pgPool?: Pool;
+  /** Last DATABASE_URL used for the singleton pool + client (dev env reloads can change this). */
+  prismaDbUrl?: string;
+};
+
+function assertPostgresUrl(url: string): void {
+  if (url.startsWith("file:") || url.toLowerCase().startsWith("sqlite:")) {
+    throw new Error(
+      "DATABASE_URL is SQLite-style, but this app uses PostgreSQL + pg. " +
+        "Set DATABASE_URL in .env.local (see .env.example), e.g. postgresql://strava:strava@localhost:5433/strava"
+    );
+  }
+}
+
+function getOrCreatePrisma(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error(
+      "DATABASE_URL is not set. Add it to .env.local (see .env.example), or use `npm run prod` with a populated prod.env."
+    );
+  }
+  assertPostgresUrl(connectionString);
+
+  if (
+    globalForPrisma.prisma &&
+    globalForPrisma.prismaDbUrl === connectionString &&
+    globalForPrisma.pgPool
+  ) {
+    return globalForPrisma.prisma;
+  }
+
+  if (globalForPrisma.pgPool) {
+    void globalForPrisma.pgPool.end().catch(() => {});
+  }
+
+  const pool = new Pool({ connectionString });
+  globalForPrisma.pgPool = pool;
+  globalForPrisma.prismaDbUrl = connectionString;
+  const client = new PrismaClient({
+    adapter: new PrismaPg(pool),
+  });
+  globalForPrisma.prisma = client;
+  return client;
+}
 
 /**
- * Relative `file:./…` resolves against cwd; Next/Turbopack can mismatch that and SQLite may throw
- * `SQLITE_READONLY_DBMOVED`. Force an absolute file path here.
+ * Lazy singleton: reads `DATABASE_URL` when first used (and after Next.js env reload if the URL changed).
+ * Avoids stale pools when `.env.local` changes without a full process restart.
  */
-function resolveSqliteDatabaseUrl(raw?: string): string {
-  const url = (raw ?? "file:./prisma/dev.db").trim();
-  if (!url.startsWith("file:")) {
-    return url;
-  }
-
-  const rest = url.slice("file:".length);
-  const isWinAbs = /^[a-zA-Z]:[\\/]/.test(rest);
-  const isPosixAbs = rest.startsWith("/") && rest.length > 1;
-
-  if (isWinAbs || isPosixAbs) {
-    return url;
-  }
-
-  const stripped = rest.replace(/^[/\\]+/, "");
-  const absPath = path.resolve(process.cwd(), stripped || ".");
-  return `file:${absPath}`;
-}
-
-function createPrismaClient() {
-  // SQLite requires a writable file path on the filesystem. Hosted serverless bundles are read-only; use Postgres there.
-  const adapter = new PrismaBetterSqlite3({
-    url: resolveSqliteDatabaseUrl(process.env.DATABASE_URL),
-  });
-  return new PrismaClient({ adapter });
-}
-
-export const prisma = globalForPrisma.prisma || createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getOrCreatePrisma();
+    const value = Reflect.get(client, prop, receiver);
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+    return value;
+  },
+}) as PrismaClient;

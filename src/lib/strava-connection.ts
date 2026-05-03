@@ -32,60 +32,6 @@ export class StravaReconnectRequiredError extends Error {
   }
 }
 
-/** Prisma SQLITE_* write failures (bundle read-only, wrong path, moved DB, etc.). */
-export class SqliteDatabaseNotWritableError extends Error {
-  readonly name = "SqliteDatabaseNotWritableError";
-
-  constructor(cause?: unknown) {
-    super(
-      "SQLite database is not writable on this deployment. Use DATABASE_URL=file:./prisma/dev.db on disk you own, or use hosted Postgres for production/serverless.",
-    );
-    if (cause !== undefined) {
-      (this as Error & { cause?: unknown }).cause = cause;
-    }
-  }
-}
-
-function isSqliteNotWritableCause(e: unknown): boolean {
-  if (typeof e !== "object" || e === null) return false;
-  const obj = e as Record<string, unknown>;
-
-  const code = obj.code;
-  if (
-    typeof code === "string" &&
-    /\breadonly\b|\bREADONLY\b|SQLITE_READ/i.test(code)
-  ) {
-    return true;
-  }
-
-  const parts: string[] = [];
-  if (typeof obj.message === "string") parts.push(obj.message);
-  else if (e instanceof Error && e.message) parts.push(e.message);
-  const meta = obj.meta;
-  if (meta !== null && typeof meta === "object") {
-    try {
-      parts.push(JSON.stringify(meta));
-    } catch {
-      /* ignore */
-    }
-  }
-
-  const blob = parts.join(" ");
-  return /\breadonly\b|\bread-only\b|READONLY|SQLITE_READ/i.test(blob);
-}
-
-async function prismaWriteUnsafe<T>(fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch (dbErr: unknown) {
-    if (isSqliteNotWritableCause(dbErr)) {
-      console.error(SqliteDatabaseNotWritableError.name, dbErr);
-      throw new SqliteDatabaseNotWritableError(dbErr);
-    }
-    throw dbErr;
-  }
-}
-
 function isInvalidStoredRefreshToken(stravaBody: string): boolean {
   try {
     const data = JSON.parse(stravaBody) as {
@@ -109,16 +55,14 @@ async function persistRefreshedTokens(
   refreshToken: string
 ): Promise<string> {
   const refreshed = await refreshAccessToken(refreshToken);
-  await prismaWriteUnsafe(() =>
-    prisma.stravaConnection.update({
-      where: { userId },
-      data: {
-        accessToken: refreshed.access_token,
-        refreshToken: refreshed.refresh_token,
-        expiresAt: refreshed.expires_at,
-      },
-    }),
-  );
+  await prisma.stravaConnection.update({
+    where: { userId },
+    data: {
+      accessToken: refreshed.access_token,
+      refreshToken: refreshed.refresh_token,
+      expiresAt: refreshed.expires_at,
+    },
+  });
   return refreshed.access_token;
 }
 
@@ -161,11 +105,9 @@ export async function refreshStravaTokensForUser(
       err.grant === "refresh_token" &&
       isInvalidStoredRefreshToken(err.responseBody)
     ) {
-      await prismaWriteUnsafe(() =>
-        prisma.stravaConnection.deleteMany({
-          where: { userId, refreshToken: connection.refreshToken },
-        }),
-      );
+      await prisma.stravaConnection.deleteMany({
+        where: { userId, refreshToken: connection.refreshToken },
+      });
       throw new StravaConnectionNotFoundError();
     }
 

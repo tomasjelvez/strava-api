@@ -1,0 +1,16 @@
+# Local PostgreSQL for `npm run dev` (see .env.example for DATABASE_URL / DIRECT_URL).
+# Host port 5433 avoids clashing with another Postgres already bound to localhost:5432.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: strava
+      POSTGRES_PASSWORD: strava
+      POSTGRES_DB: strava
+    ports:
+      - "5433:5432"
+    volumes:
+      - strava_pg_data:/var/lib/postgresql/data
+
+volumes:
+  strava_pg_data:

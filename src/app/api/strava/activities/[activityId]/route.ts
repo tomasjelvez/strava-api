@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import {
-  SqliteDatabaseNotWritableError,
   StravaConnectionNotFoundError,
   StravaReconnectRequiredError,
 } from "@/lib/strava-connection";
@@ -67,15 +66,6 @@ export async function GET(
           code: "strava_reconnect_required",
         },
         { status: 401 }
-      );
-    }
-    if (err instanceof SqliteDatabaseNotWritableError) {
-      return NextResponse.json(
-        {
-          error: err.message,
-          code: "database_not_writable",
-        },
-        { status: 503 }
       );
     }
     console.error("Strava activity fetch failed:", err);

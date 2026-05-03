@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 
 import {
-  SqliteDatabaseNotWritableError,
   StravaConnectionNotFoundError,
   StravaReconnectRequiredError,
 } from "@/lib/strava-connection";
@@ -92,9 +91,6 @@ export default async function ActivityDetailPage(props: {
     }
     if (err instanceof StravaReconnectRequiredError) {
       redirect("/dashboard?strava=reconnect");
-    }
-    if (err instanceof SqliteDatabaseNotWritableError) {
-      redirect("/dashboard?strava=error&reason=database");
     }
     redirect("/dashboard?strava=error");
   }
