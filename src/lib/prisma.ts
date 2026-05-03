@@ -1,6 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { Pool } from "pg";
+import { Pool, type PoolConfig } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -16,6 +16,45 @@ function assertPostgresUrl(url: string): void {
         "Set DATABASE_URL in .env.local (see .env.example), e.g. postgresql://strava:strava@localhost:5433/strava"
     );
   }
+}
+
+/**
+ * Supabase + `pg` v8+: `sslmode=require` is treated like strict verification and can throw
+ * "self-signed certificate in certificate chain" on Vercel. `uselibpqcompat=true` opts into
+ * libpq-compatible SSL semantics (see pg-connection-string warning).
+ */
+function withSupabasePgSslCompat(connectionString: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(connectionString);
+  } catch {
+    return connectionString;
+  }
+  if (!parsed.hostname.endsWith("supabase.co")) {
+    return connectionString;
+  }
+  const q = new URLSearchParams(parsed.search);
+  if (!q.has("uselibpqcompat")) {
+    q.set("uselibpqcompat", "true");
+  }
+  if (!q.has("sslmode")) {
+    q.set("sslmode", "require");
+  }
+  parsed.search = q.toString();
+  return parsed.toString();
+}
+
+function poolOptionsForUrl(connectionString: string): PoolConfig {
+  const url = withSupabasePgSslCompat(connectionString);
+  const rejectUnauthorized =
+    process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "0";
+  if (!rejectUnauthorized) {
+    return {
+      connectionString: url,
+      ssl: { rejectUnauthorized: false },
+    };
+  }
+  return { connectionString: url };
 }
 
 function getOrCreatePrisma(): PrismaClient {
@@ -39,7 +78,7 @@ function getOrCreatePrisma(): PrismaClient {
     void globalForPrisma.pgPool.end().catch(() => {});
   }
 
-  const pool = new Pool({ connectionString });
+  const pool = new Pool(poolOptionsForUrl(connectionString));
   globalForPrisma.pgPool = pool;
   globalForPrisma.prismaDbUrl = connectionString;
   const client = new PrismaClient({

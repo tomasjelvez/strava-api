@@ -4,7 +4,7 @@
 
 Set these in the Vercel project (and mirror them in `prod.env` for local runs against production data):
 
-- **`DATABASE_URL`** — connection string used at **runtime** by the app. With Supabase or another PgBouncer pooler, use the **pooled** Prisma-style URL here. The app uses [`@prisma/adapter-pg`](https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections#external-connection-poolers) with this value.
+- **`DATABASE_URL`** — connection string used at **runtime** by the app. With Supabase or another PgBouncer pooler, use the **pooled** Prisma-style URL here. The app uses [`@prisma/adapter-pg`](https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections#external-connection-poolers) with this value. For **Supabase** hosts (`*.supabase.co`), the app automatically appends **`uselibpqcompat=true`** (and **`sslmode=require`** if missing) so `pg` uses libpq-compatible TLS and avoids **P1011** / *self-signed certificate in certificate chain* on some hosts (e.g. Vercel). If TLS still fails, set **`DATABASE_SSL_REJECT_UNAUTHORIZED=0`** on Vercel only as a last resort (weaker against MITM; prefer fixing the URL / network first).
 - **`DIRECT_URL`** — direct (non-pooling) Postgres URL for **`prisma migrate`**, `db push`, and other Prisma CLI commands. In `prisma.config.ts`, the CLI datasource URL is **`DIRECT_URL`**, falling back to **`DATABASE_URL`** if `DIRECT_URL` is unset (fine for local Docker when both are the same).
 
 Also set Clerk, Strava OAuth, OpenAI, Resend, and any other app secrets with the same variable names as in `.env.example`.
