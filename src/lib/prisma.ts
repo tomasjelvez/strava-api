@@ -46,9 +46,20 @@ function withSupabasePgSslCompat(connectionString: string): string {
 
 function poolOptionsForUrl(connectionString: string): PoolConfig {
   const url = withSupabasePgSslCompat(connectionString);
-  const rejectUnauthorized =
-    process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "0";
-  if (!rejectUnauthorized) {
+  let hostname = "";
+  try {
+    hostname = new URL(url).hostname;
+  } catch {
+    return { connectionString: url };
+  }
+
+  const supabase = hostname.endsWith("supabase.co");
+  /** P1011 on Vercel: `pg` + Supabase often need relaxed cert verify; opt out with DATABASE_SSL_VERIFY=1. */
+  const relaxedTls =
+    process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "0" ||
+    (supabase && process.env.DATABASE_SSL_VERIFY !== "1");
+
+  if (relaxedTls) {
     return {
       connectionString: url,
       ssl: { rejectUnauthorized: false },

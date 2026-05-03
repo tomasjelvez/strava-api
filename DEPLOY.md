@@ -4,7 +4,7 @@
 
 Set these in the Vercel project (and mirror them in `prod.env` for local runs against production data):
 
-- **`DATABASE_URL`** — connection string used at **runtime** by the app. With Supabase or another PgBouncer pooler, use the **pooled** Prisma-style URL here. The app uses [`@prisma/adapter-pg`](https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections#external-connection-poolers) with this value. For **Supabase** hosts (`*.supabase.co`), the app automatically appends **`uselibpqcompat=true`** (and **`sslmode=require`** if missing) so `pg` uses libpq-compatible TLS and avoids **P1011** / *self-signed certificate in certificate chain* on some hosts (e.g. Vercel). If TLS still fails, set **`DATABASE_SSL_REJECT_UNAUTHORIZED=0`** on Vercel only as a last resort (weaker against MITM; prefer fixing the URL / network first).
+- **`DATABASE_URL`** — connection string used at **runtime** by the app. With Supabase or another PgBouncer pooler, use the **pooled** Prisma-style URL here. The app uses [`@prisma/adapter-pg`](https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections#external-connection-poolers) with this value. For **Supabase** (`*.supabase.co`), the pool adds **`uselibpqcompat=true`** / **`sslmode=require`** when missing and uses **`ssl: { rejectUnauthorized: false }`** so **P1011** (*self-signed certificate in certificate chain*) does not break Vercel/serverless. To force strict TLS verification against Supabase, set **`DATABASE_SSL_VERIFY=1`**. For non-Supabase databases, set **`DATABASE_SSL_REJECT_UNAUTHORIZED=0`** only if you need the same relaxed behavior.
 - **`DIRECT_URL`** — direct (non-pooling) Postgres URL for **`prisma migrate`**, `db push`, and other Prisma CLI commands. In `prisma.config.ts`, the CLI datasource URL is **`DIRECT_URL`**, falling back to **`DATABASE_URL`** if `DIRECT_URL` is unset (fine for local Docker when both are the same).
 
 Also set Clerk, Strava OAuth, OpenAI, Resend, and any other app secrets with the same variable names as in `.env.example`.
@@ -15,7 +15,7 @@ Also set Clerk, Strava OAuth, OpenAI, Resend, and any other app secrets with the
 
 ## Build and Prisma
 
-The app imports the generated client from `src/generated/prisma`, which is gitignored. **`prisma generate` must run on install or before `next build`.** This repo uses `postinstall` and prefixes `build` with `prisma generate` so Vercel produces the client on every deploy.
+Prisma ORM 7 generates the client into **`src/generated/prisma`** (gitignored). **`prisma generate` must run before `next build`.** This repo uses **`postinstall`**, **`package.json` `build`**, and **`vercel.json` `buildCommand`** so Vercel always runs `prisma generate` (the Next.js preset otherwise often runs only `next build` and skips your `build` script).
 
 ## Supabase + `prisma migrate` (P1001 / pooler)
 
