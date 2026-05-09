@@ -106,7 +106,7 @@ export function ActivityList() {
           setError(
             typeof payload.error === "string"
               ? payload.error
-              : "Database is read-only — fix DATABASE_URL or hosting."
+              : "La base de datos es solo lectura — revisá DATABASE_URL o el hosting."
           );
           return;
         }
@@ -115,13 +115,13 @@ export function ActivityList() {
         setError(
           typeof payload.error === "string"
             ? payload.error
-            : "Failed to load activities"
+            : "No se pudieron cargar las actividades"
         );
       } catch (e) {
         if (!cancelled) {
           setItems([]);
           setError(
-            e instanceof Error ? e.message : "Failed to load activities"
+            e instanceof Error ? e.message : "No se pudieron cargar las actividades"
           );
         }
       } finally {
@@ -155,11 +155,12 @@ export function ActivityList() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-lg leading-tight">Recent activities</CardTitle>
+        <CardTitle className="text-lg leading-tight">Actividades recientes</CardTitle>
         <CardDescription>
-          Tap a workout to load full detail from Strava. Use{" "}
-          <span className="text-foreground font-medium">Open on Strava</span>{" "}
-          on the detail page for maps and segments.
+          Tocá un entrenamiento para ver el detalle desde Strava. En la página de
+          detalle usá{" "}
+          <span className="text-foreground font-medium">Abrir en Strava</span>{" "}
+          para mapas y segmentos.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -169,9 +170,9 @@ export function ActivityList() {
               <MapPinned className="text-muted-foreground size-7" aria-hidden />
             </div>
             <div className="max-w-xs space-y-1">
-              <p className="font-medium">No workouts in this feed yet</p>
+              <p className="font-medium">Todavía no hay entrenamientos en este listado</p>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Record something in Strava, then reload this page to see it here.
+                Registrá algo en Strava y recargá esta página para verlo acá.
               </p>
             </div>
             <a
@@ -183,7 +184,7 @@ export function ActivityList() {
                 "gap-2"
               )}
             >
-              Open Strava
+              Abrir Strava
               <ExternalLink className="size-4 opacity-90" aria-hidden />
             </a>
           </div>
@@ -208,7 +209,7 @@ export function ActivityList() {
                         <div className="min-w-0 flex-1 pr-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-medium leading-snug underline-offset-4 group-hover:underline">
-                              {a.name || "Untitled"}
+                              {a.name || "Sin título"}
                             </span>
                             <ChevronRight className="text-muted-foreground size-4 shrink-0 opacity-70 transition-opacity group-hover:opacity-100" aria-hidden />
                           </div>
@@ -230,7 +231,7 @@ export function ActivityList() {
                       <div className="text-muted-foreground grid grid-cols-3 gap-3 border-t border-dashed pt-3 text-xs sm:text-sm">
                         <div>
                           <p className="text-muted-foreground/90 uppercase tracking-wide">
-                            Distance
+                            Distancia
                           </p>
                           <p className="text-foreground font-medium tabular-nums">
                             {formatDistanceMeters(a.distance)}
@@ -238,7 +239,7 @@ export function ActivityList() {
                         </div>
                         <div>
                           <p className="text-muted-foreground/90 uppercase tracking-wide">
-                            Moving
+                            En movimiento
                           </p>
                           <p className="text-foreground font-medium tabular-nums">
                             {formatDurationSeconds(a.moving_time)}
@@ -246,11 +247,11 @@ export function ActivityList() {
                         </div>
                         <div>
                           <p className="text-muted-foreground/90 uppercase tracking-wide">
-                            Avg HR
+                            FC prom.
                           </p>
                           <p className="text-foreground font-medium tabular-nums">
                             {typeof a.average_heartrate === "number"
-                              ? `${Math.round(a.average_heartrate)} bpm`
+                              ? `${Math.round(a.average_heartrate)} lpm`
                               : "—"}
                           </p>
                         </div>

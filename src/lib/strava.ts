@@ -8,7 +8,8 @@ export function buildAuthUrl(state: string): string {
     redirect_uri: process.env.STRAVA_REDIRECT_URI!,
     response_type: "code",
     approval_prompt: "auto",
-    scope: "read,activity:read_all,profile:read_all",
+    // `read_all` is required for private routes (list, detail, streams, exports) per Strava Routes API.
+    scope: "read,read_all,activity:read_all,profile:read_all",
     state,
   });
 

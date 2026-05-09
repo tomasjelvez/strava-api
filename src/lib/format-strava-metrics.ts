@@ -1,3 +1,6 @@
+/** Locale for all user-visible dates in the app (Chile). */
+export const APP_LOCALE = "es-CL" as const;
+
 export function formatDistanceMeters(meters: number | undefined): string {
   if (meters == null || meters <= 0) return "—";
   if (meters >= 1000) {
@@ -21,7 +24,7 @@ export function formatDurationSeconds(seconds: number | undefined): string {
 export function formatActivityRowStart(iso: string | undefined): string {
   if (!iso) return "—";
   try {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(APP_LOCALE, {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -36,7 +39,7 @@ export function formatActivityRowStart(iso: string | undefined): string {
 export function formatStartDateTime(iso: string | undefined): string {
   if (!iso) return "—";
   try {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(APP_LOCALE, {
       weekday: "short",
       month: "short",
       day: "numeric",

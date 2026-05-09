@@ -7,6 +7,24 @@ datasource db {
   provider = "postgresql"
 }
 
+enum CommunityJoinKind {
+  OPEN
+  APPROVAL
+}
+
+enum CommunitySignupStatus {
+  JOINED
+  PENDING
+  REJECTED
+  CANCELLED
+}
+
+enum SkillBand {
+  CASUAL
+  INTERMEDIATE
+  ADVANCED
+}
+
 model StravaConnection {
   id           String   @id @default(cuid())
   userId       String   @unique
@@ -43,7 +61,57 @@ model Activity {
   startedAt         DateTime
   load_score        Float?
   features_json     Json?
+  activityName      String?
+  sportType         String?
 
   @@unique([userId, stravaActivityId])
   @@index([userId, startedAt])
+}
+
+model AppProfile {
+  userId              String    @id
+  identifiesAsWoman Boolean   @default(false)
+  declaredSkillBand SkillBand?
+  profilePublic       Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model CommunityEvent {
+  id                     String                 @id @default(cuid())
+  hostUserId             String
+  stravaRouteId          String
+  title                  String
+  notes                  String?
+  startsAt               DateTime
+  joinKind               CommunityJoinKind
+  sportTypeSnapshot      String?
+  routeNameSnapshot      String?
+  distanceMetersSnapshot Float?
+  elevationGainSnapshot  Float?
+  minSkillBand           SkillBand?
+  paceNote               String?
+  womenOnly              Boolean                @default(false)
+  requisitesJson         Json?
+  maxParticipants        Int?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  signups                CommunityEventSignup[]
+
+  @@index([startsAt])
+  @@index([hostUserId])
+}
+
+model CommunityEventSignup {
+  id               String                 @id @default(cuid())
+  communityEventId String
+  userId           String
+  status           CommunitySignupStatus
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  communityEvent   CommunityEvent         @relation(fields: [communityEventId], references: [id], onDelete: Cascade)
+
+  @@unique([communityEventId, userId])
+  @@index([userId])
+  @@index([communityEventId, status])
 }

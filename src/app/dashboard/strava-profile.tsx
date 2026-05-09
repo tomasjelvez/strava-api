@@ -107,7 +107,7 @@ export function StravaProfile() {
           setError(
             typeof payload.error === "string"
               ? payload.error
-              : "Database is read-only — fix DATABASE_URL or hosting."
+              : "La base de datos es solo lectura — revisá DATABASE_URL o el hosting."
           );
           return;
         }
@@ -116,12 +116,12 @@ export function StravaProfile() {
         setError(
           typeof payload.error === "string"
             ? payload.error
-            : "Failed to fetch athlete"
+            : "No se pudo obtener el atleta"
         );
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Failed to fetch athlete"
+            err instanceof Error ? err.message : "No se pudo obtener el atleta"
           );
         }
       } finally {
@@ -151,8 +151,8 @@ export function StravaProfile() {
             {error}
           </p>
           <p className="text-muted-foreground mt-3 text-center text-xs">
-            If your session expired, reconnect Strava from the dashboard after
-            fixing the issue above.
+            Si venció tu sesión, volvé a conectar Strava desde el panel después de
+            resolver lo anterior.
           </p>
         </CardContent>
       </Card>
@@ -178,7 +178,7 @@ export function StravaProfile() {
           <CardDescription className="text-sm">
             {[athlete.city, athlete.state, athlete.country]
               .filter(Boolean)
-              .join(", ") || "Strava athlete"}
+              .join(", ") || "Atleta de Strava"}
           </CardDescription>
         </div>
       </CardHeader>
@@ -190,7 +190,7 @@ export function StravaProfile() {
           )}
           {athlete.sex && (
             <Badge variant="outline">
-              {athlete.sex === "M" ? "Male" : "Female"}
+              {athlete.sex === "M" ? "Hombre" : "Mujer"}
             </Badge>
           )}
         </div>
@@ -198,7 +198,7 @@ export function StravaProfile() {
         <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div className="bg-muted/40 rounded-lg border px-3 py-2.5 ring-1 ring-foreground/5">
             <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Followers
+              Seguidores
             </p>
             <p className="text-foreground mt-0.5 font-semibold tabular-nums">
               {athlete.follower_count ?? "—"}
@@ -206,7 +206,7 @@ export function StravaProfile() {
           </div>
           <div className="bg-muted/40 rounded-lg border px-3 py-2.5 ring-1 ring-foreground/5">
             <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Friends
+              Amigos
             </p>
             <p className="text-foreground mt-0.5 font-semibold tabular-nums">
               {athlete.friend_count ?? "—"}
@@ -214,7 +214,7 @@ export function StravaProfile() {
           </div>
           <div className="bg-muted/40 rounded-lg border px-3 py-2.5 ring-1 ring-foreground/5">
             <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Weight
+              Peso
             </p>
             <p className="text-foreground mt-0.5 font-semibold tabular-nums">
               {athlete.weight ? `${athlete.weight} kg` : "—"}
@@ -222,12 +222,12 @@ export function StravaProfile() {
           </div>
           <div className="bg-muted/40 rounded-lg border px-3 py-2.5 ring-1 ring-foreground/5">
             <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Units
+              Unidades
             </p>
             <p className="text-foreground mt-0.5 font-semibold">
               {athlete.measurement_preference === "feet"
                 ? "Imperial"
-                : "Metric"}
+                : "Métrico"}
             </p>
           </div>
         </div>
@@ -238,7 +238,7 @@ export function StravaProfile() {
           className="w-full border-destructive/35 text-destructive hover:bg-destructive/10 hover:text-destructive sm:w-auto"
           onClick={handleDisconnect}
         >
-          Disconnect Strava
+          Desconectar Strava
         </Button>
       </CardFooter>
     </Card>

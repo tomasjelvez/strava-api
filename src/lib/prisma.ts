@@ -99,12 +99,45 @@ function withSupabasePgSslCompat(connectionString: string): string {
   }
 }
 
+function sslModeFromConnectionString(connectionString: string): string | null {
+  try {
+    const u = new URL(connectionString);
+    const v = u.searchParams.get("sslmode");
+    return v ? v.toLowerCase() : null;
+  } catch {
+    const m = connectionString.match(/[?&]sslmode=([^&#]+)/i);
+    return m ? decodeURIComponent(m[1]).toLowerCase() : null;
+  }
+}
+
 function poolOptionsForUrl(connectionString: string): PoolConfig {
   const isSupabase = isSupabaseConnectionString(connectionString);
-  /** P1011 on Vercel: relaxed cert verify for Supabase unless DATABASE_SSL_VERIFY=1. */
+  const sslMode = sslModeFromConnectionString(connectionString);
+  /** Non-standard but common: sslmode=no-verify in URL (self-signed chain). */
+  const explicitNoVerify = sslMode === "no-verify";
+
+  const forceStrict =
+    process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "1" ||
+    process.env.DATABASE_SSL_VERIFY === "1";
+
+  const isNextDev = process.env.NODE_ENV === "development";
+
+  /**
+   * Relaxed TLS (rejectUnauthorized: false) when:
+   * - Explicit opt-in: DATABASE_SSL_REJECT_UNAUTHORIZED=0 or DATABASE_SSL_VERIFY=0
+   * - URL sslmode=no-verify (self-signed / custom CA without bundle)
+   * - Supabase host: default relaxed unless DATABASE_SSL_VERIFY=1 (Vercel P1011)
+   * - Local Next dev: default relaxed unless DATABASE_SSL_REJECT_UNAUTHORIZED=1
+   *   (fixes "self-signed certificate in certificate chain" against dev DBs /
+   *   proxies that are not supabase.co)
+   */
   const relaxedTls =
-    process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "0" ||
-    (isSupabase && process.env.DATABASE_SSL_VERIFY !== "1");
+    !forceStrict &&
+    (explicitNoVerify ||
+      process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "0" ||
+      process.env.DATABASE_SSL_VERIFY === "0" ||
+      (isSupabase && process.env.DATABASE_SSL_VERIFY !== "1") ||
+      (isNextDev && process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "1"));
 
   if (relaxedTls) {
     const withoutTlsQuery = stripTlsQueryParamsFromConnectionString(
@@ -119,6 +152,19 @@ function poolOptionsForUrl(connectionString: string): PoolConfig {
   return { connectionString: withSupabasePgSslCompat(connectionString) };
 }
 
+/**
+ * After codegen adds models (e.g. CommunityEvent), Next dev can keep an old global
+ * `PrismaClient` from before that deploy; delegates like `communityEvent` are missing and
+ * `prisma.foo.findMany` throws. Tear down stale instances when delegates don't match schema.
+ */
+function cachedPrismaMatchesSchema(client: PrismaClient | undefined): boolean {
+  if (!client) return false;
+  const delegate = Reflect.get(client, "communityEvent") as
+    | { findMany?: unknown }
+    | undefined;
+  return typeof delegate?.findMany === "function";
+}
+
 function getOrCreatePrisma(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -131,7 +177,8 @@ function getOrCreatePrisma(): PrismaClient {
   if (
     globalForPrisma.prisma &&
     globalForPrisma.prismaDbUrl === connectionString &&
-    globalForPrisma.pgPool
+    globalForPrisma.pgPool &&
+    cachedPrismaMatchesSchema(globalForPrisma.prisma)
   ) {
     return globalForPrisma.prisma;
   }
@@ -139,6 +186,8 @@ function getOrCreatePrisma(): PrismaClient {
   if (globalForPrisma.pgPool) {
     void globalForPrisma.pgPool.end().catch(() => {});
   }
+  globalForPrisma.prisma = undefined;
+  globalForPrisma.pgPool = undefined;
 
   const pool = new Pool(poolOptionsForUrl(connectionString));
   globalForPrisma.pgPool = pool;

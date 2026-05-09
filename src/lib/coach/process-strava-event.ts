@@ -71,6 +71,15 @@ export async function processStravaEvent(eventId: string): Promise<void> {
 
   const startedAt = new Date(s.start_date);
 
+  const activityName =
+    typeof s.name === "string" && s.name.trim() ? s.name.trim().slice(0, 280) : null;
+  const sportType =
+    typeof s.sport_type === "string" && s.sport_type.trim()
+      ? s.sport_type.trim()
+      : typeof s.type === "string" && s.type.trim()
+        ? s.type.trim()
+        : null;
+
   await prisma.activity.upsert({
     where: {
       userId_stravaActivityId: { userId, stravaActivityId: activityId },
@@ -87,6 +96,8 @@ export async function processStravaEvent(eventId: string): Promise<void> {
       startedAt,
       load_score: features.load_score,
       features_json: features as object,
+      activityName,
+      sportType,
     },
     update: {
       distance: typeof s.distance === "number" ? s.distance : null,
@@ -98,6 +109,8 @@ export async function processStravaEvent(eventId: string): Promise<void> {
       startedAt,
       load_score: features.load_score,
       features_json: features as object,
+      activityName,
+      sportType,
     },
   });
 

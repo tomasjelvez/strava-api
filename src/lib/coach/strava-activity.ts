@@ -2,6 +2,9 @@ import { stravaApiGetForUser } from "@/lib/strava-connection";
 
 export type StravaActivitySummary = {
   id: number;
+  name?: string;
+  sport_type?: string;
+  type?: string;
   distance?: number;
   moving_time: number;
   elapsed_time: number;

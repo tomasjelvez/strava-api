@@ -106,15 +106,15 @@ export default async function ActivityDetailPage(props: {
           <DashboardActivityHeader />
           <Card className="border-destructive/30 mt-10">
             <CardHeader>
-              <CardTitle>Could not load activity</CardTitle>
+              <CardTitle>No se pudo cargar la actividad</CardTitle>
               <CardDescription>
-                Strava returned an error (HTTP {res.status}). Try again from your
-                dashboard or open this workout on Strava.
+                Strava devolvió un error (HTTP {res.status}). Probá de nuevo desde
+                el panel o abrí este entrenamiento en Strava.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
               <Link href="/dashboard" className={buttonVariants({ variant: "outline" })}>
-                Back to dashboard
+                Volver al panel
               </Link>
               <a
                 href={`https://www.strava.com/activities/${activityNum}`}
@@ -124,7 +124,7 @@ export default async function ActivityDetailPage(props: {
                   buttonVariants({ variant: "strava", className: "gap-2" })
                 )}
               >
-                Open on Strava
+                Abrir en Strava
                 <ExternalLink className="size-4" aria-hidden />
               </a>
             </CardContent>
@@ -212,7 +212,7 @@ export default async function ActivityDetailPage(props: {
               )}
             </div>
             <h1 className="font-heading text-balance text-2xl font-bold tracking-tight sm:text-3xl">
-              {a.name || `Activity ${a.id}`}
+              {a.name || `Actividad ${a.id}`}
             </h1>
             <p className="text-muted-foreground flex items-start gap-2 text-sm leading-relaxed">
               <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -234,7 +234,7 @@ export default async function ActivityDetailPage(props: {
               "shrink-0 gap-2"
             )}
           >
-            Open on Strava
+            Abrir en Strava
             <ExternalLink className="size-4 opacity-95" aria-hidden />
           </a>
         </div>
@@ -242,36 +242,36 @@ export default async function ActivityDetailPage(props: {
         <div className="grid gap-4 sm:grid-cols-2">
           <MetricCard
             icon={Ruler}
-            label="Distance"
+            label="Distancia"
             value={formatDistanceMeters(a.distance)}
           />
           <MetricCard
             icon={Timer}
-            label="Moving time"
+            label="Tiempo en movimiento"
             value={formatDurationSeconds(a.moving_time)}
           />
           <MetricCard
             icon={Timer}
-            label="Elapsed time"
+            label="Tiempo total"
             value={formatDurationSeconds(a.elapsed_time)}
           />
           <MetricCard
             icon={Mountain}
-            label="Elevation gain"
+            label="Desnivel positivo"
             value={formatElevation(a.total_elevation_gain ?? undefined)}
           />
           <MetricCard
             icon={Heart}
-            label="Avg / max HR"
+            label="FC prom. / máx."
             value={
               typeof a.average_heartrate === "number" ||
               typeof a.max_heartrate === "number"
                 ? [
                     typeof a.average_heartrate === "number"
-                      ? `${Math.round(a.average_heartrate)} bpm`
+                      ? `${Math.round(a.average_heartrate)} lpm`
                       : "—",
                     typeof a.max_heartrate === "number"
-                      ? `${Math.round(a.max_heartrate)} bpm max`
+                      ? `${Math.round(a.max_heartrate)} lpm máx.`
                       : null,
                   ]
                     .filter(Boolean)
@@ -281,7 +281,7 @@ export default async function ActivityDetailPage(props: {
           />
           <MetricCard
             icon={MapPin}
-            label="Elevation min / max"
+            label="Altitud mín. / máx."
             value={
               a.elev_low != null || a.elev_high != null
                 ? `${formatElevation(a.elev_low ?? undefined)} / ${formatElevation(a.elev_high ?? undefined)}`
@@ -295,27 +295,27 @@ export default async function ActivityDetailPage(props: {
           a.suffer_score != null) && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">More</CardTitle>
+              <CardTitle className="text-base">Más</CardTitle>
             </CardHeader>
             <CardContent className="text-muted-foreground grid gap-2 text-sm sm:grid-cols-3">
               {a.calories != null ? (
                 <p>
                   <span className="text-foreground font-medium">
-                    Calories:{" "}
+                    Calorías:{" "}
                   </span>
                   {Math.round(a.calories)}
                 </p>
               ) : null}
               {a.device_name ? (
                 <p>
-                  <span className="text-foreground font-medium">Device: </span>
+                  <span className="text-foreground font-medium">Dispositivo: </span>
                   {a.device_name}
                 </p>
               ) : null}
               {a.suffer_score != null ? (
                 <p>
                   <span className="text-foreground font-medium">
-                    Relative effort:{" "}
+                    Esfuerzo relativo:{" "}
                   </span>
                   {a.suffer_score}
                 </p>
@@ -327,7 +327,7 @@ export default async function ActivityDetailPage(props: {
         {typeof a.description === "string" && a.description.trim().length > 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Description</CardTitle>
+              <CardTitle className="text-base">Descripción</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground whitespace-pre-wrap text-sm leading-relaxed">
@@ -353,10 +353,10 @@ function DashboardActivityHeader() {
           )}
         >
           <ArrowLeft className="size-4 shrink-0" aria-hidden />
-          Dashboard
+          Panel
         </Link>
         <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-          Activity detail
+          Detalle de actividad
         </p>
       </div>
       <UserButton />

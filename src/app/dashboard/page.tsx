@@ -34,13 +34,13 @@ export default async function DashboardPage() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1">
             <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-              Training
+              Entrenamiento
             </p>
             <h1 className="text-balance font-heading text-2xl font-bold tracking-tight sm:text-3xl">
-              Dashboard
+              Panel
             </h1>
             <p className="text-muted-foreground max-w-lg text-pretty text-sm">
-              Strava-connected training overview and recent activities.
+              Resumen conectado a Strava y actividades recientes.
             </p>
           </div>
           <div
@@ -55,10 +55,10 @@ export default async function DashboardPage() {
 
         {isConnected ? (
           <div className="flex flex-col gap-10">
-            <section aria-label="Strava profile">
+            <section aria-label="Perfil de Strava">
               <StravaProfile />
             </section>
-            <section aria-label="Recent activities">
+            <section aria-label="Actividades recientes">
               <ActivityList />
             </section>
           </div>
@@ -66,10 +66,9 @@ export default async function DashboardPage() {
           <section className="max-w-md">
             <Card>
               <CardHeader>
-                <CardTitle>Connect Strava</CardTitle>
+                <CardTitle>Conectar Strava</CardTitle>
                 <CardDescription>
-                  Link your account to see your profile and pull live activity
-                  data.
+                  Vinculá tu cuenta para ver tu perfil y traer actividades en vivo.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -80,7 +79,7 @@ export default async function DashboardPage() {
                     className: "w-full",
                   })}
                 >
-                  Connect with Strava
+                  Conectar con Strava
                 </Link>
               </CardContent>
             </Card>

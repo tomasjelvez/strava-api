@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Strava Connect",
-  description: "Connect your Strava account and view your athlete data",
+  title: "Strava · Entrenamiento",
+  description:
+    "Conecta Strava, explora rutas guardadas, únete a eventos y revisa tu actividad reciente.",
 };
 
 export default function RootLayout({
@@ -26,7 +27,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html
-        lang="en"
+        lang="es"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col">{children}</body>
