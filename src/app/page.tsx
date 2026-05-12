@@ -8,7 +8,7 @@ export default async function Home() {
   const { userId } = await auth();
 
   if (userId) {
-    redirect("/today");
+    redirect("/events");
   }
 
   return (
@@ -16,14 +16,14 @@ export default async function Home() {
       <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-8 text-center">
         <div className="space-y-3">
           <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-            Strava · Entrenamiento
+            Draft
           </p>
           <h1 className="font-heading text-balance text-4xl font-bold tracking-tight sm:text-5xl">
-            Rutas, eventos y tus últimos entrenos.
+            Organiza juntas y revive cada salida.
           </h1>
           <p className="text-muted-foreground max-w-md text-pretty text-lg leading-relaxed">
-            Inicia sesión para conectar Strava, ver tus rutas guardadas, organizar
-            salidas en grupo y revisar lo que registraste hoy.
+            Crea eventos, confirma asistencia, comparte fotos y deja comentarios
+            con la comunidad después de cada encuentro.
           </p>
         </div>
 
@@ -49,16 +49,9 @@ export default async function Home() {
         </div>
 
         <p className="text-muted-foreground text-xs">
-          Al entrar vas a la vista{" "}
-          <span className="text-foreground font-medium">Hoy</span>. ¿Necesitás el
-          panel clásico de Strava?{" "}
-          <Link
-            href="/sign-in?redirect_url=/dashboard"
-            className="text-foreground font-medium underline-offset-4 hover:underline"
-          >
-            Ir a /dashboard
-          </Link>{" "}
-          después de iniciar sesión.
+          Al entrar vas directo a{" "}
+          <span className="text-foreground font-medium">Eventos</span> para ver
+          las próximas juntas de la comunidad.
         </p>
       </div>
     </main>

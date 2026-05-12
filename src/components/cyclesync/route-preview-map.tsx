@@ -46,11 +46,16 @@ export default function RoutePreviewMap({ positions, className }: Props) {
   }, [positions]);
 
   return (
-    <div className={cn("relative isolate h-56 w-full min-h-[220px] overflow-hidden rounded-xl bg-muted ring-1 ring-border/60", className)}>
+    <div
+      className={cn(
+        "relative isolate w-full min-h-[min(58vh,520px)] h-[min(58vh,520px)] overflow-hidden rounded-xl bg-muted ring-1 ring-border/60 sm:min-h-[min(52vh,560px)] sm:h-[min(52vh,560px)]",
+        className
+      )}
+    >
       <div
         ref={containerRef}
         className="absolute inset-0 z-10 size-full [&_.leaflet-control-attribution]:text-[10px]"
-        aria-label="Route preview map"
+        aria-label="Mapa de vista previa de la ruta"
         role="region"
       />
     </div>

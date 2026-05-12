@@ -60,6 +60,7 @@ function serializeListItem(
     hostUserId: ev.hostUserId,
     title: ev.title,
     notes: ev.notes,
+    locationName: ev.locationName,
     startsAt: ev.startsAt.toISOString(),
     joinKind: ev.joinKind,
     sportTypeSnapshot: ev.sportTypeSnapshot,
@@ -160,10 +161,10 @@ export async function POST(request: Request) {
 
   const routeIdRaw = body.stravaRouteId;
   const routeParam =
-    typeof routeIdRaw === "string"
+    typeof routeIdRaw === "string" && routeIdRaw.trim()
       ? parseStravaRouteIdParam(routeIdRaw)
       : null;
-  if (!routeParam) {
+  if (typeof routeIdRaw === "string" && routeIdRaw.trim() && !routeParam) {
     return NextResponse.json({ error: "stravaRouteId inválido" }, { status: 400 });
   }
 
@@ -195,6 +196,12 @@ export async function POST(request: Request) {
     typeof body.notes === "string" ? body.notes.trim().slice(0, 5000) : "";
   const notes = notesRaw.length ? notesRaw : null;
 
+  const locationRaw =
+    typeof body.locationName === "string"
+      ? body.locationName.trim().slice(0, 280)
+      : "";
+  const locationName = locationRaw.length ? locationRaw : null;
+
   let maxParticipants: number | null = null;
   if (body.maxParticipants != null) {
     const n =
@@ -219,67 +226,77 @@ export async function POST(request: Request) {
     requisitesJson = body.requisitesJson as object;
   }
 
-  let routeJson: Record<string, unknown>;
-  try {
-    const res = await stravaApiGetForUser(userId, `/routes/${routeParam}`);
-    const txt = await res.text();
-    if (!res.ok) {
-      console.error("Strava route fetch for event create:", res.status, txt);
+  let snaps: ReturnType<typeof snapshotsFromStravaRouteJson> = {
+    stravaRouteId: null,
+    routeNameSnapshot: null,
+    distanceMetersSnapshot: null,
+    elevationGainSnapshot: null,
+    sportTypeSnapshot: null,
+  };
+  if (routeParam) {
+    let routeJson: Record<string, unknown>;
+    try {
+      const res = await stravaApiGetForUser(userId, `/routes/${routeParam}`);
+      const txt = await res.text();
+      if (!res.ok) {
+        console.error("Strava route fetch for event create:", res.status, txt);
+        return NextResponse.json(
+          {
+            error: "No se pudo cargar la ruta desde Strava",
+            status: res.status,
+          },
+          { status: res.status === 404 ? 404 : 502 }
+        );
+      }
+      const parsed = parseStravaBodyPreservingSnowflakes<unknown>(txt);
+      routeJson =
+        parsed !== null &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed)
+          ? (parsed as Record<string, unknown>)
+          : {};
+    } catch (err) {
+      if (err instanceof StravaConnectionNotFoundError) {
+        return NextResponse.json(
+          {
+            error: "Conectá Strava para asociar una ruta",
+            code: "strava_connection_required",
+          },
+          { status: 400 }
+        );
+      }
+      if (err instanceof StravaReconnectRequiredError) {
+        return NextResponse.json(
+          {
+            error: "Volvé a conectar Strava para asociar una ruta",
+            code: "strava_reconnect_required",
+          },
+          { status: 401 }
+        );
+      }
+      console.error(err);
       return NextResponse.json(
-        {
-          error: "No se pudo cargar la ruta desde Strava",
-          status: res.status,
-        },
-        { status: res.status === 404 ? 404 : 502 }
+        { error: "No se pudo validar la ruta con Strava" },
+        { status: 502 }
       );
     }
-    const parsed = parseStravaBodyPreservingSnowflakes<unknown>(txt);
-    routeJson =
-      parsed !== null &&
-      typeof parsed === "object" &&
-      !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : {};
-  } catch (err) {
-    if (err instanceof StravaConnectionNotFoundError) {
-      return NextResponse.json(
-        {
-          error: "Conectá Strava para crear un evento",
-          code: "strava_connection_required",
-        },
-        { status: 400 }
-      );
-    }
-    if (err instanceof StravaReconnectRequiredError) {
-      return NextResponse.json(
-        {
-          error: "Volvé a conectar Strava para crear un evento",
-          code: "strava_reconnect_required",
-        },
-        { status: 401 }
-      );
-    }
-    console.error(err);
-    return NextResponse.json(
-      { error: "No se pudo validar la ruta con Strava" },
-      { status: 502 }
-    );
-  }
 
-  const snaps = snapshotsFromStravaRouteJson(routeJson);
-  if (!snaps.stravaRouteId || snaps.stravaRouteId !== routeParam) {
-    return NextResponse.json(
-      { error: "Respuesta inesperada de Strava para la ruta" },
-      { status: 502 }
-    );
+    snaps = snapshotsFromStravaRouteJson(routeJson);
+    if (!snaps.stravaRouteId || snaps.stravaRouteId !== routeParam) {
+      return NextResponse.json(
+        { error: "Respuesta inesperada de Strava para la ruta" },
+        { status: 502 }
+      );
+    }
   }
 
   const ev = await prisma.communityEvent.create({
     data: {
       hostUserId: userId,
-      stravaRouteId: routeParam,
+      stravaRouteId: routeParam ?? undefined,
       title,
       notes,
+      locationName,
       startsAt,
       joinKind,
       sportTypeSnapshot: snaps.sportTypeSnapshot ?? undefined,

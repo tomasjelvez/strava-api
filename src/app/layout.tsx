@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Strava · Entrenamiento",
+  title: "Draft",
   description:
-    "Conecta Strava, explora rutas guardadas, únete a eventos y revisa tu actividad reciente.",
+    "Crea eventos, confirma asistencia, comparte fotos y conversa con la comunidad.",
 };
 
 export default function RootLayout({

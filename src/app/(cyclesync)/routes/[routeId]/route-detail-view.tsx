@@ -23,12 +23,23 @@ import {
   decodeStravaLatLng,
   getRoutePolylineString,
 } from "@/lib/strava-route-polyline";
+import { stravaRouteSportTypeLabel } from "@/lib/strava-route-display";
+import {
+  alignRouteStreamSamples,
+  approximateAscentM,
+  elevationRangeM,
+  parseStravaRouteStreams,
+  type ParsedRouteStreams,
+} from "@/lib/strava-route-streams";
+import { RouteElevationProfile } from "@/components/cyclesync/route-elevation-profile";
 
 const RoutePreviewMap = dynamic(
   () => import("@/components/cyclesync/route-preview-map"),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-56 w-full rounded-xl" />,
+    loading: () => (
+      <Skeleton className="min-h-[min(58vh,520px)] w-full rounded-xl sm:min-h-[min(52vh,560px)]" />
+    ),
   }
 );
 
@@ -47,21 +58,29 @@ type StravaRouteDetail = {
   type?: string | number;
   sport_type?: string;
   private?: boolean;
+  segments?: unknown[];
 };
 
-function routeTypeLabel(r: StravaRouteDetail): string | null {
-  if (typeof r.sport_type === "string" && r.sport_type) return r.sport_type;
-  if (typeof r.type === "string" && r.type) return r.type;
-  if (typeof r.type === "number") return String(r.type);
-  return null;
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-muted/30 px-3 py-2.5 ring-1 ring-border/40">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+        {value}
+      </p>
+    </div>
+  );
 }
 
 function DetailSkeleton() {
   return (
     <div className="space-y-4">
       <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-20 w-full rounded-xl" />
-      <Skeleton className="h-24 w-full rounded-xl" />
+      <Skeleton className="h-40 w-full rounded-xl" />
+      <Skeleton className="min-h-[min(58vh,520px)] w-full rounded-xl sm:min-h-[min(52vh,560px)]" />
+      <Skeleton className="h-32 w-full rounded-xl" />
     </div>
   );
 }
@@ -74,6 +93,7 @@ export function RouteDetailView({
   isStravaConnected: boolean;
 }) {
   const [route, setRoute] = useState<StravaRouteDetail | null>(null);
+  const [streams, setStreams] = useState<ParsedRouteStreams | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,52 +105,84 @@ export function RouteDetailView({
 
     let cancelled = false;
     (async () => {
+      setLoading(true);
+      setError(null);
+      setRoute(null);
+      setStreams(null);
       try {
-        const res = await fetch(
-          `/api/strava/routes/${encodeURIComponent(routeId)}`,
-          { cache: "no-store" }
-        );
-        const contentType = res.headers.get("content-type") ?? "";
-        const payload = contentType.includes("application/json")
-          ? await res.json().catch(() => ({}))
-          : {};
+        const [resRoute, resStreams] = await Promise.all([
+          fetch(`/api/strava/routes/${encodeURIComponent(routeId)}`, {
+            cache: "no-store",
+          }),
+          fetch(`/api/strava/routes/${encodeURIComponent(routeId)}/streams`, {
+            cache: "no-store",
+          }),
+        ]);
+
+        const routePayload =
+          resRoute.headers.get("content-type")?.includes("application/json")
+            ? await resRoute.json().catch(() => ({}))
+            : {};
 
         if (cancelled) return;
 
-        if (!res.ok) {
+        if (!resRoute.ok) {
           let msg =
-            typeof payload.error === "string"
-              ? payload.error
+            typeof routePayload.error === "string"
+              ? routePayload.error
               : "No se pudo cargar esta ruta.";
           const code =
-            typeof payload.code === "string" ? payload.code : undefined;
+            typeof routePayload.code === "string"
+              ? routePayload.code
+              : undefined;
           if (code === "strava_connection_required") {
             msg = `${msg} Abrí Ajustes → Strava y conectá tu cuenta.`;
           }
           setError(msg);
           setRoute(null);
+          setStreams(null);
           return;
         }
 
         const row =
-          payload &&
-          typeof payload === "object" &&
-          !Array.isArray(payload)
-            ? (payload as Record<string, unknown>)
+          routePayload &&
+          typeof routePayload === "object" &&
+          !Array.isArray(routePayload)
+            ? (routePayload as Record<string, unknown>)
             : null;
 
         if (row !== null && stravaRouteIdFromObject(row)) {
-          const withNumericId = row as unknown as StravaRouteDetail;
-          setRoute(withNumericId);
+          setRoute(row as unknown as StravaRouteDetail);
           setError(null);
         } else {
           setRoute(null);
           setError("Respuesta inesperada de Strava.");
+          setStreams(null);
+          return;
+        }
+
+        if (resStreams.ok) {
+          const streamPayload =
+            resStreams.headers.get("content-type")?.includes("application/json")
+              ? await resStreams.json().catch(() => null)
+              : null;
+          if (!cancelled && streamPayload != null) {
+            setStreams(
+              parseStravaRouteStreams(streamPayload) ?? {
+                latlng: [],
+                distanceM: [],
+                altitudeM: [],
+              }
+            );
+          }
+        } else if (!cancelled) {
+          setStreams(null);
         }
       } catch {
         if (!cancelled) {
           setError("No se pudo cargar esta ruta.");
           setRoute(null);
+          setStreams(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -146,12 +198,36 @@ export function RouteDetailView({
     () => (route ? getRoutePolylineString(route) : null),
     [route]
   );
-  const mapPositions = useMemo(
-    () => (encodedPolyline ? decodeStravaLatLng(encodedPolyline) : []),
-    [encodedPolyline]
+
+  const mapPositions = useMemo(() => {
+    if (streams?.latlng && streams.latlng.length >= 2) return streams.latlng;
+    if (encodedPolyline) return decodeStravaLatLng(encodedPolyline);
+    return [];
+  }, [streams, encodedPolyline]);
+
+  const aligned = useMemo(() => {
+    if (!streams) return { distanceM: [] as number[], altitudeM: [] as number[] };
+    return alignRouteStreamSamples(streams);
+  }, [streams]);
+
+  const showElevationChart =
+    aligned.distanceM.length >= 2 && aligned.altitudeM.length >= 2;
+
+  const elevRange = useMemo(
+    () => elevationRangeM(aligned.altitudeM),
+    [aligned.altitudeM]
+  );
+
+  const profileAscentM = useMemo(
+    () => approximateAscentM(aligned.altitudeM),
+    [aligned.altitudeM]
   );
 
   const stravaUrl = `https://www.strava.com/routes/${encodeURIComponent(routeId)}`;
+  const sportTypeLabel = route ? stravaRouteSportTypeLabel(route) : null;
+  const segmentCount = Array.isArray(route?.segments)
+    ? route.segments.length
+    : 0;
 
   if (!isStravaConnected) {
     return (
@@ -202,28 +278,118 @@ export function RouteDetailView({
 
       {!loading && !error && route ? (
         <>
-          <header className="space-y-1">
+          <header className="space-y-2">
             <h1 className="font-heading text-xl font-semibold leading-snug tracking-tight">
               {route.name?.trim() ||
                 `Ruta ${typeof route.id === "number" ? route.id : routeId}`}
             </h1>
-            <p className="text-xs text-muted-foreground">
-              {[
-                formatDistanceMeters(route.distance),
-                route.elevation_gain != null && route.elevation_gain > 0
-                  ? `desnivel ${formatElevation(route.elevation_gain)}`
-                  : null,
-                route.estimated_moving_time != null &&
-                route.estimated_moving_time > 0
-                  ? `~${formatDurationSeconds(route.estimated_moving_time)} en movimiento`
-                  : null,
-                routeTypeLabel(route),
-                route.private ? "Privada" : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
+            {(sportTypeLabel || route.private) ? (
+              <div className="flex flex-wrap gap-2">
+                {sportTypeLabel ? (
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium capitalize text-foreground ring-1 ring-border/60">
+                    {sportTypeLabel}
+                  </span>
+                ) : null}
+                {route.private ? (
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-border/60">
+                    Privada
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </header>
+
+          <Card className="py-5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">Resumen</CardTitle>
+              <CardDescription className="text-xs">
+                Datos de Strava y, si hay permisos, muestras del trazo detallado.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2 pb-5 sm:grid-cols-3">
+              <StatCell
+                label="Longitud"
+                value={formatDistanceMeters(route.distance)}
+              />
+              <StatCell
+                label="Desnivel (Strava)"
+                value={
+                  route.elevation_gain != null && route.elevation_gain > 0
+                    ? formatElevation(route.elevation_gain)
+                    : "—"
+                }
+              />
+              <StatCell
+                label="Tiempo estimado"
+                value={
+                  route.estimated_moving_time != null &&
+                  route.estimated_moving_time > 0
+                    ? formatDurationSeconds(route.estimated_moving_time)
+                    : "—"
+                }
+              />
+              {elevRange ? (
+                <>
+                  <StatCell
+                    label="Elevación mín. (perfil)"
+                    value={formatElevation(elevRange.min)}
+                  />
+                  <StatCell
+                    label="Elevación máx. (perfil)"
+                    value={formatElevation(elevRange.max)}
+                  />
+                </>
+              ) : null}
+              {showElevationChart && profileAscentM > 0 ? (
+                <StatCell
+                  label="Subida acumulada (perfil)"
+                  value={formatElevation(profileAscentM)}
+                />
+              ) : null}
+              {segmentCount > 0 ? (
+                <StatCell
+                  label="Segmentos en ruta"
+                  value={String(segmentCount)}
+                />
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card className="py-5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Mapa</CardTitle>
+              <CardDescription className="text-xs">
+                Trazado ampliado; podés hacer zoom y mover el mapa.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-0 pt-2">
+              {mapPositions.length >= 2 ? (
+                <RoutePreviewMap positions={mapPositions} />
+              ) : (
+                <CardDescription>
+                  No hay geometría en el mapa para esta ruta (Strava no envió
+                  polyline ni puntos en streams).
+                </CardDescription>
+              )}
+            </CardContent>
+          </Card>
+
+          {showElevationChart ? (
+            <Card className="py-5">
+              <CardContent className="pb-5 pt-4">
+                <RouteElevationProfile
+                  distanceM={aligned.distanceM}
+                  altitudeM={aligned.altitudeM}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <p className="text-center text-xs text-muted-foreground">
+              {streams
+                ? "No hay datos de altimetría en los streams de esta ruta."
+                : "No se pudieron cargar los streams (revisá permisos de Strava o reconectá en Ajustes)."}
+            </p>
+          )}
 
           {route.description?.trim() ? (
             <Card>
@@ -239,23 +405,6 @@ export function RouteDetailView({
               </CardContent>
             </Card>
           ) : null}
-
-          <Card className="py-5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">
-                Vista previa
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pb-0 pt-2">
-              {mapPositions.length >= 2 ? (
-                <RoutePreviewMap positions={mapPositions} />
-              ) : (
-                <CardDescription>
-                  No hay geometría en el mapa para esta ruta (Strava no envió polyline).
-                </CardDescription>
-              )}
-            </CardContent>
-          </Card>
 
           <div className="flex flex-col gap-2">
             <Link

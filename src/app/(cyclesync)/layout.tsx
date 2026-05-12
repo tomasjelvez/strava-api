@@ -19,13 +19,10 @@ export default async function AppShellLayout({
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-md items-center justify-between gap-3 px-5 py-3">
           <Link
-            href="/today"
+            href="/events"
             className="font-heading text-sm font-semibold tracking-tight"
           >
-            Strava
-            <span className="ml-1 text-muted-foreground font-normal">
-              Entrenamiento
-            </span>
+            Draft
           </Link>
           <div className="flex items-center gap-3">
             <Link

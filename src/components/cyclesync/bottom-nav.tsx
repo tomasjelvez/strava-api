@@ -2,14 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Home, MapPinned, Sparkles, Settings } from "lucide-react";
+import { CalendarDays, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
-  { href: "/today", label: "Hoy", icon: Home },
-  { href: "/routes", label: "Rutas", icon: MapPinned },
   { href: "/events", label: "Eventos", icon: CalendarDays },
-  { href: "/insights", label: "Consejos", icon: Sparkles },
   { href: "/settings", label: "Ajustes", icon: Settings },
 ];
 
@@ -32,8 +29,8 @@ export function BottomNav() {
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-colors",
                   isActive
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-primary"
                 )}
               >
                 <Icon

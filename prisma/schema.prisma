@@ -80,9 +80,10 @@ model AppProfile {
 model CommunityEvent {
   id                     String                 @id @default(cuid())
   hostUserId             String
-  stravaRouteId          String
+  stravaRouteId          String?
   title                  String
   notes                  String?
+  locationName           String?
   startsAt               DateTime
   joinKind               CommunityJoinKind
   sportTypeSnapshot      String?
@@ -97,6 +98,8 @@ model CommunityEvent {
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
   signups                CommunityEventSignup[]
+  comments               CommunityEventComment[]
+  images                 CommunityEventImage[]
 
   @@index([startsAt])
   @@index([hostUserId])
@@ -114,4 +117,36 @@ model CommunityEventSignup {
   @@unique([communityEventId, userId])
   @@index([userId])
   @@index([communityEventId, status])
+}
+
+model CommunityEventComment {
+  id               String         @id @default(cuid())
+  communityEventId String
+  authorUserId     String
+  body             String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  communityEvent   CommunityEvent @relation(fields: [communityEventId], references: [id], onDelete: Cascade)
+  images           CommunityEventImage[]
+
+  @@index([communityEventId, createdAt])
+  @@index([authorUserId])
+}
+
+model CommunityEventImage {
+  id               String         @id @default(cuid())
+  communityEventId String
+  commentId        String?
+  uploaderUserId   String
+  url              String
+  pathname         String?
+  contentType      String?
+  altText          String?
+  createdAt        DateTime       @default(now())
+  communityEvent   CommunityEvent @relation(fields: [communityEventId], references: [id], onDelete: Cascade)
+  comment          CommunityEventComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([communityEventId, createdAt])
+  @@index([commentId])
+  @@index([uploaderUserId])
 }

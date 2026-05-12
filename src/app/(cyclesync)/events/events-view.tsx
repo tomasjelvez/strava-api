@@ -31,6 +31,7 @@ type EventListItem = {
   id: string;
   title: string;
   notes?: string | null;
+  locationName?: string | null;
   startsAt: string;
   joinKind: "OPEN" | "APPROVAL";
   sportTypeSnapshot?: string | null;
@@ -100,13 +101,13 @@ export function EventsView() {
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Comunidad
+              Draft
             </p>
             <h1 className="font-heading text-2xl font-semibold tracking-tight">
               Eventos
             </h1>
             <p className="text-sm text-muted-foreground">
-              Salidas basadas en rutas: bici, running y más.
+              Juntas de la comunidad para inscribirse, comentar y compartir fotos.
             </p>
           </div>
           <Link
@@ -157,7 +158,7 @@ export function EventsView() {
               className={cn(
                 "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
                 joinKindFilter === key
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-foreground text-background"
                   : "bg-muted text-muted-foreground hover:text-foreground"
               )}
             >
@@ -186,7 +187,7 @@ export function EventsView() {
           <CardHeader>
             <CardTitle className="text-base">No hay eventos próximos</CardTitle>
             <CardDescription>
-              Creá uno desde tus rutas de Strava o probá otros filtros.
+              Creá el primer evento social para que la comunidad se pueda sumar.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -242,7 +243,7 @@ export function EventsView() {
                         : "Anfitrión aprueba"}
                     </span>
                     {ev.womenOnly ? (
-                      <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-medium text-rose-700 dark:text-rose-300">
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                         Solo mujeres
                       </span>
                     ) : null}
@@ -253,22 +254,25 @@ export function EventsView() {
                       <span className="line-clamp-2">{ev.routeNameSnapshot}</span>
                     </p>
                   ) : null}
-                  <p className="text-[11px] text-muted-foreground">
-                    {[
-                      ev.distanceMetersSnapshot != null
-                        ? formatDistanceMeters(ev.distanceMetersSnapshot)
-                        : null,
-                      ev.elevationGainSnapshot != null &&
-                      ev.elevationGainSnapshot > 0
-                        ? formatElevation(ev.elevationGainSnapshot)
-                        : null,
-                      ev.paceNote ? ev.paceNote : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
+                  {ev.locationName || ev.paceNote || ev.distanceMetersSnapshot != null ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      {[
+                        ev.locationName,
+                        ev.distanceMetersSnapshot != null
+                          ? formatDistanceMeters(ev.distanceMetersSnapshot)
+                          : null,
+                        ev.elevationGainSnapshot != null &&
+                        ev.elevationGainSnapshot > 0
+                          ? formatElevation(ev.elevationGainSnapshot)
+                          : null,
+                        ev.paceNote ? ev.paceNote : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
                   {!ev.canSignup && ev.mine?.status === "JOINED" ? (
-                    <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <p className="text-[11px] font-medium text-primary">
                       Estás dentro
                     </p>
                   ) : null}
@@ -278,7 +282,7 @@ export function EventsView() {
                     </p>
                   ) : null}
                   {ev.mine?.status === "PENDING" ? (
-                    <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                    <p className="text-[11px] font-medium text-primary">
                       Solicitud pendiente de aprobación
                     </p>
                   ) : null}

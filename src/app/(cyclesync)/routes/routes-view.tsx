@@ -18,6 +18,7 @@ import {
   formatElevation,
 } from "@/lib/format-strava-metrics";
 import { stravaRouteIdFromObject } from "@/lib/strava-route-id";
+import { stravaRouteSportTypeLabel } from "@/lib/strava-route-display";
 
 type StravaRouteSummary = {
   id?: number | string;
@@ -29,13 +30,6 @@ type StravaRouteSummary = {
   sport_type?: string;
   private?: boolean;
 };
-
-function routeTypeLabel(r: StravaRouteSummary): string | null {
-  if (typeof r.sport_type === "string" && r.sport_type) return r.sport_type;
-  if (typeof r.type === "string" && r.type) return r.type;
-  if (typeof r.type === "number") return String(r.type);
-  return null;
-}
 
 function RoutesListSkeleton() {
   return (
@@ -192,7 +186,7 @@ export function RoutesView({
               r as unknown as Record<string, unknown>
             );
             if (!sid) return null;
-            const typeLabel = routeTypeLabel(r);
+            const typeLabel = stravaRouteSportTypeLabel(r);
             return (
               <li key={sid}>
                 <Link

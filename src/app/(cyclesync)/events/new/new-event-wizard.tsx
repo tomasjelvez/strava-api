@@ -1,47 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  formatDistanceMeters,
-  formatElevation,
-} from "@/lib/format-strava-metrics";
-import { stravaRouteIdFromObject } from "@/lib/strava-route-id";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type StravaRouteSummary = {
-  id?: number | string;
-  name?: string;
-  distance?: number;
-  elevation_gain?: number;
-  sport_type?: string;
-  type?: string | number;
-};
-
-export function NewEventWizard({
-  isStravaConnected,
-  initialRouteId,
-}: {
-  isStravaConnected: boolean;
-  initialRouteId: string | null;
-}) {
+export function NewEventWizard() {
   const router = useRouter();
-  const [routes, setRoutes] = useState<StravaRouteSummary[]>([]);
-  const [routeSearch, setRouteSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(initialRouteId);
-  const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [locationName, setLocationName] = useState("");
   const [startsAtLocal, setStartsAtLocal] = useState("");
   const [joinKind, setJoinKind] = useState<"OPEN" | "APPROVAL">("OPEN");
   const [womenOnly, setWomenOnly] = useState(false);
@@ -51,57 +27,7 @@ export function NewEventWizard({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isStravaConnected) {
-      setLoadingRoutes(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/strava/routes?per_page=80");
-        const payload = res.ok
-          ? await res.json().catch(() => [])
-          : [];
-        if (!cancelled && Array.isArray(payload)) {
-          setRoutes(
-            payload.filter(
-              (x): x is StravaRouteSummary =>
-                !!x &&
-                typeof x === "object" &&
-                stravaRouteIdFromObject(x as Record<string, unknown>) !== null
-            )
-          );
-        }
-      } finally {
-        if (!cancelled) setLoadingRoutes(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isStravaConnected]);
-
-  const filteredRoutes = useMemo(() => {
-    const q = routeSearch.trim().toLowerCase();
-    if (!q) return routes;
-    return routes.filter((r) => {
-      const name = typeof r.name === "string" ? r.name.toLowerCase() : "";
-      const id =
-        typeof r.id === "number"
-          ? String(r.id)
-          : typeof r.id === "string"
-            ? r.id
-            : "";
-      return name.includes(q) || id.includes(q);
-    });
-  }, [routes, routeSearch]);
-
   const submit = useCallback(async () => {
-    if (!selectedId) {
-      setError("Elegí una ruta de tus rutas de Strava.");
-      return;
-    }
     if (title.trim().length < 2) {
       setError("Poné un título corto para el evento.");
       return;
@@ -130,9 +56,9 @@ export function NewEventWizard({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          stravaRouteId: selectedId,
           title: title.trim(),
           notes: notes.trim() || undefined,
+          locationName: locationName.trim() || undefined,
           startsAt: startsIso,
           joinKind,
           womenOnly,
@@ -173,9 +99,9 @@ export function NewEventWizard({
       setSubmitting(false);
     }
   }, [
-    selectedId,
     title,
     notes,
+    locationName,
     startsAtLocal,
     joinKind,
     womenOnly,
@@ -184,34 +110,6 @@ export function NewEventWizard({
     maxParticipants,
     router,
   ]);
-
-  if (!isStravaConnected) {
-    return (
-      <div className="space-y-4">
-        <Link
-          href="/events"
-          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" aria-hidden />
-          Volver
-        </Link>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Conecta Strava</CardTitle>
-            <CardDescription>
-              Necesitás Strava para elegir una de tus rutas guardadas y crear el
-              evento.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/settings" className={buttonVariants()}>
-              Ir a ajustes
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5">
@@ -228,91 +126,13 @@ export function NewEventWizard({
           Nuevo evento
         </h1>
         <p className="text-sm text-muted-foreground">
-          Elegí una ruta, definí requisitos y publicá en el feed de la comunidad.
+          Publicá una junta para que la comunidad se inscriba, comente y comparta fotos.
         </p>
       </header>
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">1. Ruta</CardTitle>
-          <CardDescription>
-            Buscá por nombre entre tus rutas de Strava y tocá una para asociarla.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 pb-5">
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={routeSearch}
-              onChange={(e) => setRouteSearch(e.target.value)}
-              placeholder="Buscar rutas…"
-              className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-          {loadingRoutes ? (
-            <p className="text-xs text-muted-foreground">Cargando rutas…</p>
-          ) : null}
-          <ul className="max-h-60 space-y-1 overflow-y-auto rounded-lg border p-1">
-            {filteredRoutes.map((r) => {
-              const id = stravaRouteIdFromObject(
-                r as Record<string, unknown>
-              );
-              if (!id) return null;
-              const label =
-                typeof r.name === "string" && r.name.trim()
-                  ? r.name.trim()
-                  : `Ruta ${id}`;
-              const sport =
-                typeof r.sport_type === "string"
-                  ? r.sport_type
-                  : typeof r.type === "string"
-                    ? r.type
-                    : null;
-              const selected = selectedId === id;
-              return (
-                <li key={id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(id)}
-                    className={cn(
-                      "flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-2 text-left text-sm transition-colors",
-                      selected
-                        ? "bg-primary/15 text-foreground"
-                        : "hover:bg-muted"
-                    )}
-                  >
-                    <span className="font-medium leading-snug">{label}</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {[
-                        formatDistanceMeters(r.distance),
-                        r.elevation_gain != null && r.elevation_gain > 0
-                          ? formatElevation(r.elevation_gain)
-                          : null,
-                        sport,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {filteredRoutes.length === 0 && !loadingRoutes ? (
-            <p className="text-xs text-muted-foreground">
-              No hay coincidencias. Creá más rutas en Strava o probá otra búsqueda.
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">2. Fecha y cupos</CardTitle>
+          <CardTitle className="text-sm font-semibold">1. Datos del evento</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 pb-5 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-medium">
@@ -322,6 +142,16 @@ export function NewEventWizard({
               onChange={(e) => setTitle(e.target.value)}
               className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring font-normal"
               placeholder="Vuelta matinal · café después"
+              maxLength={280}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-2">
+            Lugar o punto de encuentro (opcional)
+            <input
+              value={locationName}
+              onChange={(e) => setLocationName(e.target.value)}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring font-normal"
+              placeholder="Plaza Italia, café de siempre, punto de partida..."
               maxLength={280}
             />
           </label>
@@ -356,7 +186,7 @@ export function NewEventWizard({
                   name="joinKind"
                   checked={joinKind === v}
                   onChange={() => setJoinKind(v)}
-                  className="size-3.5"
+                  className="size-3.5 accent-primary"
                 />
                 {lbl}
               </label>
@@ -379,7 +209,7 @@ export function NewEventWizard({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold">
-            3. Requisitos (se muestran en la tarjeta)
+            2. Requisitos (se muestran en la tarjeta)
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 pb-5 sm:grid-cols-2">

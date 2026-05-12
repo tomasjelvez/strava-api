@@ -32,12 +32,29 @@ export async function GET(
     where: { id: eventId },
     include: {
       signups: { where: { userId } },
+      comments: {
+        include: {
+          images: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+        take: 100,
+      },
+      images: {
+        orderBy: { createdAt: "desc" },
+        take: 24,
+      },
     },
   });
 
   if (!ev) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
+
+  const mySignup = ev.signups[0] ?? null;
+  const canViewDetails =
+    ev.hostUserId === userId || mySignup?.status === CommunitySignupStatus.JOINED;
 
   const joinedCount = await prisma.communityEventSignup.count({
     where: {
@@ -58,11 +75,14 @@ export async function GET(
 
   const nameIds = [
     ev.hostUserId,
-    ...joinedParticipants.map((p) => p.userId),
+    ...(canViewDetails ? joinedParticipants.map((p) => p.userId) : []),
+    ...(canViewDetails ? ev.comments.map((c) => c.authorUserId) : []),
+    ...(canViewDetails ? ev.images.map((img) => img.uploaderUserId) : []),
+    ...(canViewDetails
+      ? ev.comments.flatMap((c) => c.images.map((img) => img.uploaderUserId))
+      : []),
   ];
   const displayNames = await mapUserDisplayNames(nameIds);
-
-  const mySignup = ev.signups[0] ?? null;
 
   let pendingReviews: Array<{
     signupId: string;
@@ -108,6 +128,34 @@ export async function GET(
     );
   }
 
+  if (!canViewDetails) {
+    return NextResponse.json({
+      event: {
+        id: ev.id,
+        hostUserId: ev.hostUserId,
+        hostDisplayName: displayNames[ev.hostUserId] ?? "Anfitrión",
+        title: ev.title,
+        locationName: ev.locationName,
+        startsAt: ev.startsAt.toISOString(),
+        joinKind: ev.joinKind,
+        sportTypeSnapshot: ev.sportTypeSnapshot,
+        minSkillBand: ev.minSkillBand,
+        paceNote: ev.paceNote,
+        womenOnly: ev.womenOnly,
+        maxParticipants: ev.maxParticipants,
+        joinedCount,
+        canViewDetails,
+        mine: mySignup
+          ? {
+              status: mySignup.status,
+              id: mySignup.id,
+            }
+          : null,
+        canSignup: canStartSignup(ev, userId, joinedCount),
+      },
+    });
+  }
+
   return NextResponse.json({
     event: {
       id: ev.id,
@@ -115,6 +163,7 @@ export async function GET(
       hostDisplayName: displayNames[ev.hostUserId] ?? "Anfitrión",
       title: ev.title,
       notes: ev.notes,
+      locationName: ev.locationName,
       startsAt: ev.startsAt.toISOString(),
       joinKind: ev.joinKind,
       sportTypeSnapshot: ev.sportTypeSnapshot,
@@ -134,6 +183,30 @@ export async function GET(
         displayName: displayNames[p.userId] ?? "Miembro",
         joinedAt: p.createdAt.toISOString(),
       })),
+      comments: ev.comments.map((c) => ({
+        id: c.id,
+        authorUserId: c.authorUserId,
+        authorDisplayName: displayNames[c.authorUserId] ?? "Miembro",
+        body: c.body,
+        createdAt: c.createdAt.toISOString(),
+        images: c.images.map((img) => ({
+          id: img.id,
+          uploaderUserId: img.uploaderUserId,
+          uploaderDisplayName: displayNames[img.uploaderUserId] ?? "Miembro",
+          url: `/api/events/${encodeURIComponent(ev.id)}/images/${encodeURIComponent(img.id)}`,
+          altText: img.altText,
+          createdAt: img.createdAt.toISOString(),
+        })),
+      })),
+      images: ev.images.map((img) => ({
+        id: img.id,
+        uploaderUserId: img.uploaderUserId,
+        uploaderDisplayName: displayNames[img.uploaderUserId] ?? "Miembro",
+        url: `/api/events/${encodeURIComponent(ev.id)}/images/${encodeURIComponent(img.id)}`,
+        altText: img.altText,
+        createdAt: img.createdAt.toISOString(),
+      })),
+      canViewDetails,
       mine: mySignup
         ? {
             status: mySignup.status,

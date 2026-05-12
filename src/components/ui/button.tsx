@@ -8,17 +8,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 [a]:hover:bg-primary/90",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-foreground/20 bg-background text-foreground hover:border-primary hover:text-primary aria-expanded:border-primary aria-expanded:text-primary dark:border-foreground/25 dark:bg-background dark:hover:border-primary",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-foreground text-background hover:bg-foreground/85 aria-expanded:bg-foreground aria-expanded:text-background",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "text-foreground hover:bg-primary/10 hover:text-primary aria-expanded:bg-primary/10 aria-expanded:text-primary",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:border-primary/40 focus-visible:ring-primary/20",
         strava:
-          "border-transparent bg-strava text-strava-foreground hover:bg-strava/90 [a]:hover:bg-strava/90",
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/90 [a]:hover:bg-primary/90",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
